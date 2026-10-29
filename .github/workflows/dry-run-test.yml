@@ -1,0 +1,35 @@
+name: Dry run test
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Repo to read (owner/name)"
+        required: true
+        default: "malcolmkwallaker-cyber/AIagentcommunicator"
+
+permissions:
+  contents: read
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.GH_AGENT_TOKEN }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      SLACK_APPROVER_USER_ID: ${{ secrets.SLACK_APPROVER_USER_ID }}
+      TARGET_REPO: ${{ inputs.repo }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kill switch
+        run: '[ ! -f PAUSE ] || { echo "PAUSE present; exiting."; exit 1; }'
+      - name: Unit tests
+        run: python -m unittest discover tests
+      - name: Read one repo (read-only)
+        run: gh repo view "$TARGET_REPO" --json name,description,pushedAt | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Post test message to Slack
+        run: |
+          python scripts/agent_cli.py post --channel agent-chief-of-staff --text ":white_check_mark: Dry run test from malcolm-os-agents. Read $TARGET_REPO. Nothing was changed."
+      - name: Create test approval request
+        run: |
+          python scripts/agent_cli.py request-approval --agent dry-run --action-type send_email --summary "TEST ONLY - no action will be taken" --dry-run
