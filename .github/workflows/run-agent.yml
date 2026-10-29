@@ -1,0 +1,46 @@
+# Inert review template. Enabling requires a separate reviewed change.
+name: Run agent (disabled)
+on:
+  workflow_call:
+    inputs:
+      agent: {type: string, required: true}
+    secrets:
+      ANTHROPIC_API_KEY: {required: false}
+permissions:
+  contents: read
+jobs:
+  run:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency: malcolm-os-agent-${{ inputs.agent }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Kill switch and validate role
+        env:
+          AGENT: ${{ inputs.agent }}
+        run: |
+          [ ! -f PAUSE ] || { echo 'PAUSE present'; exit 1; }
+          case "$AGENT" in chief-of-staff|real-estate|runtheroster|website) ;; *) exit 1 ;; esac
+      - name: Claude read-only review template
+        id: agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Read CLAUDE.md and agents/${{ inputs.agent }}.md. Produce a review draft only.
+            No live writes, external actions or tool-based delegation. Report inaccessible sources.
+          claude_args: >-
+            --max-turns 25
+            --tools "Read,Glob,Grep"
+      - name: Log approximate usage
+        if: always() && steps.agent.outcome != 'skipped'
+        env:
+          AGENT: ${{ inputs.agent }}
+          EXECUTION_FILE: ${{ steps.agent.outputs.execution_file }}
+        run: python scripts/agent_cli.py log-usage --agent "$AGENT" --file "$EXECUTION_FILE" >> "$GITHUB_STEP_SUMMARY"
+      - name: Activation remains blocked
+        run: echo 'Read README activation checklist. This template is not a verified integration.'

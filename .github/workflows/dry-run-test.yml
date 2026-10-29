@@ -1,0 +1,17 @@
+name: Offline validation
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Offline unit and configuration tests
+        run: python -m unittest discover tests -v
+# Intentionally runs while PAUSE is present: no agent, secrets, Slack or paid API calls.

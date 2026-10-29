@@ -1,0 +1,13 @@
+name: Agent - chief-of-staff (disabled)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  run:
+    # Activation requires a reviewed change; dispatch cannot bypass this gate.
+    if: ${{ false }}
+    uses: ./.github/workflows/run-agent.yml
+    with:
+      agent: chief-of-staff
+    secrets: inherit

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+usage.jsonl
+.env
+.env.local
+
