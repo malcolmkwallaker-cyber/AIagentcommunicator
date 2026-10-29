@@ -35,7 +35,7 @@ def main(argv=None) -> int:
     if a.cmd == "post":
         slack.post(a.channel, a.text)
     elif a.cmd == "handoff":
-        slack.post("agent-handoffs", slack.format_handoff(getattr(a, "from"), a.to, a.task, a.context, a.due))
+        slack.post("handoffs", slack.format_handoff(getattr(a, "from"), a.to, a.task, a.context, a.due))
     elif a.cmd == "request-approval":
         print(json.dumps(approvals.request(a.agent, a.action_type, a.summary, a.dry_run)))
     elif a.cmd == "check-approvals":
@@ -53,3 +53,4 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

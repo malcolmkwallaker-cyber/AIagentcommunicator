@@ -29,7 +29,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(approvals.authorize("research", None, A)[0])
 
     def test_channels(self):
-        self.assertEqual(slack.normalize_channel("#agent-cirql"), "agent-cirql")
+        self.assertEqual(slack.normalize_channel("#malcolms-agents"), "malcolms-agents")
         with self.assertRaises(ValueError):
             slack.normalize_channel("general")
 
@@ -42,3 +42,4 @@ class Tests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

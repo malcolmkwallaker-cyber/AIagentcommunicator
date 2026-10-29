@@ -1,17 +1,28 @@
 """Minimal Slack Web API client (stdlib only)."""
 import json
 import os
+from pathlib import Path
 import urllib.parse
 import urllib.request
 
 CHANNELS = {
-    "chief-of-staff": "agent-chief-of-staff",
-    "cirql": "agent-cirql",
-    "steadfast": "agent-steadfast",
-    "portfolio": "agent-portfolio",
-    "handoffs": "agent-handoffs",
+    "chief-of-staff": "malcolms-agents",
+    "real-estate": "malcolms-agents",
+    "runtheroster": "malcolms-agents",
+    "website": "malcolms-agents",
+    "handoffs": "malcolms-agents",
     "approvals": "agent-approvals",
 }
+WORKSPACE_ID = "T0BKDCYEFDZ"
+COORDINATION_ID = "C0CE20ZCCNL"
+APPROVER_ID = "U0BP29247TM"
+
+
+def ensure_unpaused():
+    if (Path(__file__).resolve().parents[2] / "PAUSE").exists():
+        raise RuntimeError("PAUSE present; live operations disabled")
+
+
 AGENT_CHANNELS = set(CHANNELS.values())
 HANDOFF_FIELDS = ("FROM", "TO", "TASK", "CONTEXT", "DUE")
 
@@ -33,6 +44,7 @@ def format_handoff(frm, to, task, context, due) -> str:
 
 
 def api(method: str, params: dict, token: str = None, http_post: bool = True) -> dict:
+    ensure_unpaused()
     token = token or os.environ["SLACK_BOT_TOKEN"]
     headers = {"Authorization": "Bearer " + token}
     if http_post:
@@ -54,21 +66,31 @@ def api(method: str, params: dict, token: str = None, http_post: bool = True) ->
 
 
 def channel_id(name: str) -> str:
-    """Resolve channel name to ID (bot must be a member / channel visible)."""
-    cursor = ""
-    while True:
-        p = {"types": "public_channel,private_channel", "limit": 200, "exclude_archived": "true"}
-        if cursor:
-            p["cursor"] = cursor
-        d = api("conversations.list", p, http_post=False)
-        for c in d["channels"]:
-            if c["name"] == name:
-                return c["id"]
-        cursor = d.get("response_metadata", {}).get("next_cursor")
-        if not cursor:
-            raise RuntimeError(f"Channel #{name} not found")
+    """Use explicit workspace-bound IDs; never resolve by channel name alone."""
+    name = normalize_channel(name)
+    if os.environ.get("SLACK_WORKSPACE_ID") != WORKSPACE_ID:
+        raise ValueError("Expected verified MyPRE workspace")
+    if os.environ.get("SLACK_APPROVER_USER_ID") != APPROVER_ID:
+        raise ValueError("Expected Malcolm's MyPRE identity")
+    auth = api("auth.test", {}, http_post=False)
+    if auth.get("team_id") != WORKSPACE_ID or auth.get("user_id") != os.environ.get("SLACK_BOT_USER_ID"):
+        raise ValueError("Slack bot identity/workspace mismatch")
+    cid = COORDINATION_ID
+    expected_name = "malcolms-agents"
+    if name == "agent-approvals":
+        cid = os.environ.get("SLACK_APPROVAL_CHANNEL_ID", "")
+        expected_name = os.environ.get("SLACK_APPROVAL_CHANNEL_NAME", "")
+        if not cid.startswith("C") or cid == COORDINATION_ID or not expected_name:
+            raise ValueError("A distinct verified approval channel is required")
+    channel = api("conversations.info", {"channel": cid}, http_post=False)["channel"]
+    if (channel.get("id") != cid or channel.get("name") != expected_name
+            or not channel.get("is_member") or channel.get("is_archived")
+            or channel.get("is_ext_shared")):
+        raise ValueError("Slack channel identity, membership or sharing mismatch")
+    return cid
 
 
 def post(channel: str, text: str) -> dict:
     name = normalize_channel(channel)
     return api("chat.postMessage", {"channel": channel_id(name), "text": text})
+

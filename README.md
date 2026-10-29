@@ -1,45 +1,47 @@
-# malcolm-os-agents
+# AIagentcommunicator
 
-A team of autonomous Claude agents (Chief of Staff, Cirql, Steadfast, Portfolio) that run on a schedule via GitHub Actions, read all your repos, and talk to you in Slack.
+Last updated: 2026-10-29 / Author: ChatGPT / Status: Draft correction, disabled
 
-**Rules they follow (enforced in code and in `CLAUDE.md`)**
-- Tier 1 (automatic): read repos, research, logs, post in agent channels.
-- Tier 2 (pull request): any change to your code/docs goes in a PR. Never direct to `main`.
-- Tier 3 (needs your approval in `#agent-approvals`): email, publishing, spending, CRM changes, deleting, messaging outsiders, creating repos/projects, acting on suggestions from communications. Unknown actions default to Tier 3.
+This repository holds a proposed Malcolm OS collaboration framework. It supports Northern Minnesota Pemberton real estate, RunTheRoster, movedwithmalcolm.com and Malcolm OS. It does not replace Drive as the source of truth or establish that bots can accept each other's Slack handoffs.
 
-## Setup (no coding needed)
+## Current roles
+| Agent | Useful work | Sources |
+| --- | --- | --- |
+| chief-of-staff | Reconcile priorities, accepted handoffs, blockers and verified results | Malcolm OS and this repository |
+| real-estate | Lead-health, listing-readiness and recruiting drafts | Authorized scoped Drive/FUB evidence, if connected |
+| runtheroster | Deduplicated QA review with build and reproduction evidence | malcolmkwallaker-cyber/NFLGM |
+| website | Publishing failure review and factual local content drafts | malcolmkwallaker-cyber/moved-with-malcolm |
 
-### 1. Slack
-1. Go to https://api.slack.com/apps → **Create New App** → From scratch.
-2. **OAuth & Permissions** → Bot Token Scopes: `chat:write`, `channels:read`, `channels:history`, `reactions:read` (add `groups:read`, `groups:history` if channels are private).
-3. **Install to Workspace**. Copy the **Bot User OAuth Token** (starts `xoxb-`) → this is `SLACK_BOT_TOKEN`.
-4. Create channels: `#agent-chief-of-staff`, `#agent-cirql`, `#agent-steadfast`, `#agent-portfolio`, `#agent-handoffs`, `#agent-approvals`. In each, type `/invite @YourBotName`.
-5. Your Slack user ID: click your profile → ⋮ → **Copy member ID** (starts `U`) → `SLACK_APPROVER_USER_ID`.
+Roles and cadence are in `agents/`. All four workflows are manual-only, with literal disabled job gates. `PAUSE` is present as a second control. No cron triggers remain. The existing 8 AM America/Chicago weekday discussion, Friday lead report, Tuesday CEO meeting and RunTheRoster QA remain the coordination points. No replacement schedules have been activated. Future recurring schedules must be deduplicated and account for Central daylight saving time.
 
-### 2. Anthropic
-https://console.anthropic.com → **API Keys** → Create key → `ANTHROPIC_API_KEY`. Set a monthly spend limit there too.
+## Repository decision
+The original request named a separate `malcolm-os-agents` repository. This PR instead lives in `AIagentcommunicator`. Its root framework layout is usable for a coordination repository, but it does not satisfy the original repository-name requirement and is not a complete multi-bot transport. The named separate repository returned unavailable during review, which does not prove it does not exist. Keep this correction on PR #1. Do not rename, create, migrate or deploy a repository implicitly. Before activation, Malcolm must choose this repository as the home or approve a separate migration. Do not run two copies.
 
-### 3. GitHub token
-GitHub → Settings → Developer settings → Fine-grained tokens → **Generate new token**.
-- Resource owner: you. Repository access: **All repositories**.
-- Permissions: Contents **Read** and write (needed to push agent branches), Pull requests **Read and write**, Metadata Read. Leave everything else off.
-- Also add a **branch protection rule / ruleset** on every repo's default branch requiring a pull request, so the token cannot push to main even by mistake.
-- Copy the token → `GH_AGENT_TOKEN`.
+## Safety boundaries
+Tier 1 is scoped reading, research, local logs and approved agent-channel coordination. Tier 2 changes require PR review. Tier 3 covers external messages, publishing, spending, CRM changes, deletion, new repos/projects and unknown actions.
 
-### 4. Add the secrets
-In this repo: **Settings → Secrets and variables → Actions → New repository secret**. Add `ANTHROPIC_API_KEY`, `SLACK_BOT_TOKEN`, `SLACK_APPROVER_USER_ID`, `GH_AGENT_TOKEN`.
-Also install the Claude GitHub app: https://github.com/apps/claude
+Classification alone does not enforce execution. The old CLI allowed an unrelated approval ID to authorize an action and accepted approved requests indefinitely. Approval evidence is now checked for age, author, action and exact scope, with rejection precedence. Test requests never authorize real actions. The CLI still denies every Tier 3 execution because there is no trusted single-use executor. That executor needs an immutable payload, target, expiry, action binding, atomic consumption and an audit trail before it can be enabled. A reaction is not permission for arbitrary future actions.
 
-### 5. Test
-**Actions → Dry run test → Run workflow.** It runs unit tests, reads one repo, posts a test message to `#agent-chief-of-staff`, and posts a test approval request in `#agent-approvals`. Nothing is changed.
+No GitHub write token or Slack token is passed to the Claude template. It has only Read/Glob/Grep tools and remains disabled. Future PR writes require an independently enforced broker and tested default-branch protection, not a model promise or shell allowlist. Do not grant an all-repositories write token. A separate read-only token may eventually cover owned repositories; any approved writer must be limited to explicitly selected repos and non-default branches. Existing tokens, scopes, rulesets, spending limits and Slack membership have not been verified.
 
-## Everyday use
-- **Approve/reject:** react ✅ or ❌ on the request in `#agent-approvals`. Only your reaction counts. Requests expire after 72 hours. The next agent run checks reactions and only then acts.
-- **Run an agent now:** Actions → pick the agent → Run workflow.
-- **Change schedule:** edit the `cron:` line in `.github/workflows/agent-<name>.yml` (times are UTC; https://crontab.guru helps). Defaults: chief-of-staff 07:00, others 08:00–09:00, weekdays.
-- **Kill switch:** create an empty file named `PAUSE` in the repo root. Every workflow exits immediately. Delete it to resume.
-- **Cost controls:** each run has `--max-turns 25` and a 20-minute timeout (edit in the `agent-*.yml` files). Approximate usage (turns, tokens, cost) is shown in each run's summary.
-- **Edit agents:** change `agents/*.md` (role, repos, channel, metrics) and `CLAUDE.md`. Add an agent by adding a file in `agents/` and copying a workflow.
+## Slack configuration, currently unused
+Coordination uses MyPRE `#malcolms-agents`, workspace `T0BKDCYEFDZ`, channel `C0CE20ZCCNL`. `SLACK_APPROVER_USER_ID` must be Malcolm's MyPRE identity `U0BP29247TM`. The separate Real Estate workspace's `#ai-agents` is not interchangeable.
 
-## Developer notes
-`python -m unittest discover tests` — helper scripts in `scripts/` use only the Python standard library.
+`SLACK_APPROVAL_CHANNEL_ID` must point to a distinct, verified approval channel in MyPRE. None has been verified or created in this correction. The code fails closed when configuration, workspace, name, membership or identity does not match. It accepts no discontinued project channels and does not discover channels by ambiguous name.
+
+For a separately approved live test, a maintainer would configure `SLACK_BOT_TOKEN`, `SLACK_WORKSPACE_ID`, `SLACK_APPROVER_USER_ID`, `SLACK_BOT_USER_ID`, `SLACK_APPROVAL_CHANNEL_ID` and `SLACK_APPROVAL_CHANNEL_NAME`. Secrets never belong in source. Grant only necessary Slack posting, history and reactions read scopes for designated channels; no channel creation or broad posting scope. No live test or secret setup is performed by this PR.
+
+## Validation
+Run `python -m unittest discover tests -v`. Offline validation also runs on pull requests, with no secrets, network, Slack posts or paid calls. It intentionally runs while PAUSE is present; agent execution and Slack actions do not. The old workflow called a Slack-writing integration test a dry run. It has been replaced with truly offline tests. A future live test must explicitly disclose its Slack posts and paid API calls and receive approval first.
+
+## Before recommending activation
+1. Confirm the repository home and existing owners; avoid duplicate automation.
+2. Verify least-privilege credential scopes and branch protections using actual service evidence.
+3. Verify the designated Slack workspace, bot and approval channel, and Malcolm's identity.
+4. Implement and test any required write broker and durable, scope-bound, single-use approvals. No Tier 3 executors currently exist.
+5. Add approved source connectors or a dated, approved context snapshot; this template cannot fetch Drive/FUB by itself.
+6. With explicit approval, run a bounded live read/draft test and a Slack handoff acceptance test. Prove rejection, expiration and PAUSE behavior. Do not call a posted handoff accepted until its recipient responds.
+7. Verify official action/version compatibility, pin reviewed action commits, retain 25-turn and 20-minute limits, verify usage logging against actual action output and set a provider spend cap.
+8. Review new CI results. Only then request Malcolm's approval for enabling selected work, in a separate PR. Removing PAUSE alone does not activate anything.
+
+No approval to merge or activate is recommended yet. See CLAUDE.md for source links and exact operating boundaries.
